@@ -1,4 +1,3 @@
-DEBUG: left_type=int right_type=int
 Program [line 1]
 SYM TABLE:
  print_int : (int) -> void

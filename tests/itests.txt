@@ -1,5 +1,5 @@
-D_undefined_var                FAIL (see outputs/D_undefined_var.diff for details)
-B_add                          FAIL (see outputs/B_add.diff for details)
+D_undefined_var                pass
+B_add                          pass
 No memory leak found.
 No uninitialized value found.
 ========================================

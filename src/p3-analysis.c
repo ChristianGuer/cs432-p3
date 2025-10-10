@@ -93,54 +93,70 @@ void AnalysisVisitor_infer_literal (NodeVisitor* visitor, ASTNode* node)
 
 void AnalysisVisitor_check_vardecl ( NodeVisitor *visitor, ASTNode *node)
 {
-    //DecafeType var_type = GET_INFERRED_TYPE(node->vardecl.type);
+    //DecafType var_type = GET_INFERRED_TYPE(node->vardecl.type);
     if (node->vardecl.type == VOID) {
         ErrorList_printf(ERROR_LIST, "Void variable '%s' on line %d", node->vardecl.name, node->source_line);
+
     }
     
 
 }
 
-//This requires a symbol lookup
-
-void AnalysisVisitor_check_binaryop(NodeVisitor * visitor, ASTNode *node)
+void AnalysisVisitor_check_location (NodeVisitor* visitor, ASTNode* node)
 {
-    DecafType left_type = GET_INFERRED_TYPE(node->binaryop.left);
-    DecafType right_type = GET_INFERRED_TYPE(node->binaryop.right);
-    printf("DEBUG: left_type=%s right_type=%s\n", DecafType_to_string(left_type), DecafType_to_string(right_type));
-
-    switch(node->binaryop.operator) {
-        /*Arithmetic operators*/
-        case ADDOP: case SUBOP: case MULOP: case DIVOP: case MODOP: 
-            break;
-
-        /*Logical operators*/
-        case OROP: case ANDOP: 
-            break;
-        /*Equality operators*/
-        case EQOP: case NEQOP:
-
-            break;
-
-        /*Relational operators*/
-        case LTOP: case LEOP: case GTOP: case GEOP:
-            if (left_type != INT || right_type != INT) {
-                ErrorList_printf(ERROR_LIST, "Type error: binary operator '%s' requires integer operands"
-                    "(found %s and %s) on [line %d]", BinaryOpToString(node->binaryop.operator),
-                    DecafType_to_string(left_type), DecafType_to_string(right_type), node->source_line);
-                return;
-            }
-            break;
-
-        default:
-            ErrorList_printf(ERROR_LIST, "Type error: binary operator '%d' is invalid"
-                " on [line %d]", node->binaryop.operator, node->source_line);
-            return;
+    //This requires a symbol lookup
+    Symbol* symbol = lookup_symbol_with_reporting(visitor, node, node->location.name);
+    if (symbol == NULL) {
+        return; //error already reported
     }
 
 
-    //hardcoding + operation
 }
+
+//This requires a symbol lookup
+/* TODO: infer types of locations (this will require a symbol lookup) */
+ 
+void AnalysisVisitor_check_binaryop (NodeVisitor* visitor, ASTNode* node)
+{
+    DecafType left_type = GET_INFERRED_TYPE(node->binaryop.left);
+    DecafType right_type = GET_INFERRED_TYPE(node->binaryop.right);
+ 
+    switch (node->binaryop.operator) {
+ 
+        /* arithmetic and relational operators */
+        case ADDOP: case SUBOP: case MULOP: case DIVOP: case MODOP:
+        case LTOP: case LEOP: case GEOP: case GTOP:
+            if (left_type != INT || right_type != INT) {
+                ErrorList_printf(ERROR_LIST,
+                    "Type error: binary operator %s requires integer operands "
+                    "(found %s and %s) on line %d",
+                    BinaryOpToString(node->binaryop.operator),
+                    DecafType_to_string(left_type),
+                    DecafType_to_string(right_type),
+                    node->source_line);
+            }
+            break;
+ 
+        /* logical operators */
+        case OROP: case ANDOP:
+            /* TODO: finish */
+            break;
+ 
+        /* equality operators */
+        case EQOP: case NEQOP:
+            if (left_type != right_type) {
+                ErrorList_printf(ERROR_LIST,
+                    "Type error: binary operator %s requires matching operands "
+                    "(found %s and %s) on line %d",
+                    (node->binaryop.operator == EQOP ? "==" : "!="),
+                    DecafType_to_string(left_type),
+                    DecafType_to_string(right_type),
+                    node->source_line);
+            }
+            break;
+    }
+}
+ 
 
 ErrorList* analyze (ASTNode* tree)
 {
@@ -151,9 +167,10 @@ ErrorList* analyze (ASTNode* tree)
 
     /* BOILERPLATE: TODO: register analysis callbacks */
     v->previsit_literal = AnalysisVisitor_infer_literal;
-    v->postvisit_vardecl = AnalysisVisitor_check_vardecl;
+    v->previsit_vardecl = AnalysisVisitor_check_vardecl;
     v->postvisit_binaryop = AnalysisVisitor_check_binaryop;
-    //v->postvisit_location = AnalysisVisitor_check_location;
+    v->previsit_location = AnalysisVisitor_check_location;
+
     //v->postvisit_assignment = AnalysisVisitor_check_assignment;
     /* perform analysis, save error list, clean up, and return errors */
     NodeVisitor_traverse(v, tree);
