@@ -93,10 +93,9 @@ void AnalysisVisitor_infer_literal (NodeVisitor* visitor, ASTNode* node)
 
 void AnalysisVisitor_check_vardecl ( NodeVisitor *visitor, ASTNode *node)
 {
-    DecafeType var_type = GET_INFERRED_TYPE(node->vardecl.type);
-    if (var_type == VOID) {
+    //DecafeType var_type = GET_INFERRED_TYPE(node->vardecl.type);
+    if (node->vardecl.type == VOID) {
         ErrorList_printf(ERROR_LIST, "Void variable '%s' on line %d", node->vardecl.name, node->source_line);
-        return;
     }
     
 
@@ -152,7 +151,10 @@ ErrorList* analyze (ASTNode* tree)
 
     /* BOILERPLATE: TODO: register analysis callbacks */
     v->previsit_literal = AnalysisVisitor_infer_literal;
+    v->postvisit_vardecl = AnalysisVisitor_check_vardecl;
     v->postvisit_binaryop = AnalysisVisitor_check_binaryop;
+    //v->postvisit_location = AnalysisVisitor_check_location;
+    //v->postvisit_assignment = AnalysisVisitor_check_assignment;
     /* perform analysis, save error list, clean up, and return errors */
     NodeVisitor_traverse(v, tree);
     ErrorList* errors = ((AnalysisData*)v->data)->errors;

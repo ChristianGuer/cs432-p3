@@ -1,0 +1,17 @@
+--- outputs/D_undefined_var.txt	2025-10-10 17:06:13.497315982 -0400
++++ expected/D_undefined_var.txt	2023-09-06 14:55:53.000000000 -0400
+@@ -1,13 +1 @@
+-Program [line 1]
+-SYM TABLE:
+- print_int : (int) -> void
+- print_bool : (bool) -> void
+- print_str : (str) -> void
+- main : () -> int
+-
+-  FuncDecl name="main" return_type=int parameters={} [line 1]
+-  SYM TABLE:
+-
+-    Block [line 2]
+-    SYM TABLE:
+-
++Symbol 'a' undefined on line 3
