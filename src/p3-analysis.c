@@ -98,6 +98,11 @@ void AnalysisVisitor_check_vardecl(NodeVisitor *visitor, ASTNode *node)
     {
         ErrorList_printf(ERROR_LIST, "Void variable '%s' on line %d", node->vardecl.name, node->source_line);
     }
+    if (node->vardecl.array_length < 1)
+    {
+        // array of length 0
+        ErrorList_printf(ERROR_LIST, "Zero length array '%s' on line %d", node->vardecl.name, node->source_line);
+    }
 }
 
 void AnalysisVisitor_check_location(NodeVisitor *visitor, ASTNode *node)
