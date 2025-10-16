@@ -2,3 +2,5 @@ def int main()
 {
     return a;
 }
+
+// def int main() { if (a) { return 0; } }
