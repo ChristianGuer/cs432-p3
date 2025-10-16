@@ -1,0 +1,11 @@
+def int main()
+{
+	int a;
+    a = 3;
+    if(a < (4 +2)){
+        a = 4;
+    } else {
+        a = 5;
+    }
+	return a;
+}

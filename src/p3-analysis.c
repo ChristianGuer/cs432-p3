@@ -86,6 +86,16 @@ Symbol *lookup_symbol_with_reporting(NodeVisitor *visitor, ASTNode *node, const 
  */
 #define GET_INFERRED_TYPE(N) (DecafType)(long) ASTNode_get_attribute(N, "type")
 
+void AnalysisVisitor_check_literal(NodeVisitor *visitor, ASTNode *node)
+{
+    NULL;
+}
+/**
+ * @brief Infer the type of a literal node
+ *
+ * @param visitor Visitor structure (not used)
+ * @param node Literal AST node
+ */
 void AnalysisVisitor_infer_literal(NodeVisitor *visitor, ASTNode *node)
 {
     SET_INFERRED_TYPE(node->literal.type);
@@ -117,11 +127,21 @@ void AnalysisVisitor_check_location(NodeVisitor *visitor, ASTNode *node)
 
 // This requires a symbol lookup
 /* TODO: infer types of locations (this will require a symbol lookup) */
+void AnalysisVisitor_infer_binaryop(NodeVisitor *visitor, ASTNode *node)
+{
+    lookup_symbol_with_reporting(visitor, node, node->location.name);
+}
 
 void AnalysisVisitor_check_binaryop(NodeVisitor *visitor, ASTNode *node)
 {
+    printf("Node %s at line %d has type %s\n",
+       NodeType_to_string(node->type),
+       node->source_line,
+       DecafType_to_string(GET_INFERRED_TYPE(node)));
+
     DecafType left_type = GET_INFERRED_TYPE(node->binaryop.left);
     DecafType right_type = GET_INFERRED_TYPE(node->binaryop.right);
+
 
     switch (node->binaryop.operator)
     {
@@ -146,12 +166,24 @@ void AnalysisVisitor_check_binaryop(NodeVisitor *visitor, ASTNode *node)
                              DecafType_to_string(right_type),
                              node->source_line);
         }
+        SET_INFERRED_TYPE(INT);
         break;
 
     /* logical operators */
     case OROP:
     case ANDOP:
         /* TODO: finish */
+        if (left_type != BOOL || right_type != BOOL)
+        {
+            ErrorList_printf(ERROR_LIST,
+                             "Type error: binary operator %s requires boolean operands "
+                             "(found %s and %s) on line %d",
+                             BinaryOpToString(node->binaryop.operator),
+                             DecafType_to_string(left_type),
+                             DecafType_to_string(right_type),
+                             node->source_line);
+        }
+        SET_INFERRED_TYPE(BOOL);
         break;
 
     /* equality operators */
@@ -167,6 +199,7 @@ void AnalysisVisitor_check_binaryop(NodeVisitor *visitor, ASTNode *node)
                              DecafType_to_string(right_type),
                              node->source_line);
         }
+        SET_INFERRED_TYPE(BOOL);
         break;
     }
 }
@@ -290,13 +323,37 @@ ErrorList *analyze(ASTNode *tree)
     v->dtor = (Destructor)AnalysisData_free;
 
     /* BOILERPLATE: TODO: register analysis callbacks */
-    v->previsit_literal = AnalysisVisitor_infer_literal;
-    v->previsit_vardecl = AnalysisVisitor_check_vardecl;
-    v->postvisit_binaryop = AnalysisVisitor_check_binaryop;
-    v->previsit_location = AnalysisVisitor_check_location;
-    v->postvisit_program = AnalysisVisitor_check_main;
-    v->previsit_block = AnalysisVisitor_check_break_continue;
-    v->previsit_conditional = AnalysisVisitor_check_conditional;
+    v->previsit_program      = NULL;
+    v->postvisit_program     = AnalysisVisitor_check_main;
+    v->previsit_vardecl      = NULL;
+    v->postvisit_vardecl     = AnalysisVisitor_check_vardecl;
+    v->previsit_funcdecl     = NULL;
+    v->postvisit_funcdecl    = NULL;
+    v->previsit_block        = AnalysisVisitor_check_break_continue;
+    v->postvisit_block       = NULL;
+    v->previsit_assignment   = NULL;
+    v->postvisit_assignment  = NULL;
+    v->previsit_conditional  = AnalysisVisitor_check_conditional;
+    v->postvisit_conditional = NULL;
+    v->previsit_whileloop    = NULL;
+    v->postvisit_whileloop   = NULL;
+    v->previsit_return       = NULL;
+    v->postvisit_return      = NULL;
+    v->previsit_break        = NULL;
+    v->postvisit_break       = NULL;
+    v->previsit_continue     = NULL;
+    v->postvisit_continue    = NULL;
+    v->previsit_binaryop     = NULL;
+    v->invisit_binaryop      = NULL;
+    v->postvisit_binaryop    = AnalysisVisitor_check_binaryop;
+    v->previsit_unaryop      = NULL;
+    v->postvisit_unaryop     = NULL;
+    v->previsit_location     = AnalysisVisitor_check_location;
+    v->postvisit_location    = NULL;
+    v->previsit_funccall     = NULL;
+    v->postvisit_funccall    = NULL;
+    v->previsit_literal      = AnalysisVisitor_infer_literal;
+    v->postvisit_literal     = AnalysisVisitor_check_literal;
 
     // v->postvisit_assignment = AnalysisVisitor_check_assignment;
     /* perform analysis, save error list, clean up, and return errors */

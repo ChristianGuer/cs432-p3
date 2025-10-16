@@ -1,10 +1,7 @@
 Running suite(s): Default
-38%: Checks: 13, Failures: 7, Errors: 1
-public.c:25:F:Public:D_invalid_no_main:0: Assertion 'invalid_program("int a;")' failed
-public.c:28:F:Public:C_invalid_break:0: Assertion 'invalid_program("def int main () { " "break; return 0;" " }")' failed
+ERROR: No 'type' attribute
+69%: Checks: 13, Failures: 3, Errors: 1
 public.c:29:F:Public:C_var_type_mismatch:0: Assertion 'invalid_program("int x; def int main() { x=false; return 0; }")' failed
-public.c:30:F:Public:C_invalid_conditional:0: Assertion 'invalid_program("def int main() { if (1) { return 0; } }")' failed
 public.c:31:F:Public:B_invalid_dup_var_global:0: Assertion 'invalid_program("def int main () { " "int a; bool b; int a; return 0;" " }")' failed
 public.c:33:F:Public:B_mismatched_parameters:0: Assertion 'invalid_program("def int main() { foo(true, true); return 0; } " "def void foo(int i, bool b) { return; } ")' failed
-public.c:35:F:Public:A_invalid_main_var:0: Assertion 'invalid_program("int main; def int foo(int a) { return 0; }")' failed
 private.c:5:E:Private:A_null_tree:0: (after this point) Received signal 11 (Segmentation fault)
