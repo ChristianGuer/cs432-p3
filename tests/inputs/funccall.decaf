@@ -1,0 +1,12 @@
+def int foo(int x) {
+    return x;
+}
+
+def int main()
+{
+	int a;
+    int b;
+    a = 7;
+    b = foo(a);
+	return a;
+}

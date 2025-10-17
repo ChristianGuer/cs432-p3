@@ -1,15 +1,15 @@
 digraph AST {
 3 [shape=box, label="VarDecl name='a'"];
-5 [shape=box, label="Location name='a'"];
+5 [shape=box, label="Location name='a'\ntype: int"];
 7 [shape=box, label="Literal value=4\ntype: int"];
 8 [shape=box, label="Literal value=5\ntype: int"];
-6 [shape=box, label="BinaryOp op='+'"];
+6 [shape=box, label="BinaryOp op='+'\ntype: int"];
 6 -> 7;
 6 -> 8;
 4 [shape=box, label="Assignment"];
 4 -> 5;
 4 -> 6;
-10 [shape=box, label="Location name='a'"];
+10 [shape=box, label="Location name='a'\ntype: int"];
 9 [shape=box, label="Return"];
 9 -> 10;
 2 [shape=box, label="Block\nsymbolTable: \n  a : int"];

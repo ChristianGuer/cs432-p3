@@ -1,0 +1,6 @@
+int x; 
+def int main() 
+{ 
+    x=false;
+    return 0; 
+}

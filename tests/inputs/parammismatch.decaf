@@ -1,0 +1,8 @@
+def int main() 
+{ 
+    foo(true, true); return 0; 
+} 
+def void foo(int i, bool b) 
+{
+     return ; 
+}

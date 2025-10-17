@@ -1,16 +1,8 @@
-<<<<<<< HEAD
-==1578053== Memcheck, a memory error detector
-==1578053== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
-==1578053== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
-==1578053== Command: ../decaf inputs/add.decaf
-==1578053== 
-=======
-==1450298== Memcheck, a memory error detector
-==1450298== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
-==1450298== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
-==1450298== Command: ../decaf inputs/add.decaf
-==1450298== 
->>>>>>> 6467200 (commit to pull)
+==3126105== Memcheck, a memory error detector
+==3126105== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
+==3126105== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
+==3126105== Command: ../decaf inputs/add.decaf
+==3126105== 
 Program [line 1]
 SYM TABLE:
  print_int : (int) -> void
@@ -25,24 +17,12 @@ SYM TABLE:
     SYM TABLE:
      a : int
 
-<<<<<<< HEAD
-==1578053== 
-==1578053== HEAP SUMMARY:
-==1578053==     in use at exit: 0 bytes in 0 blocks
-==1578053==   total heap usage: 1,813 allocs, 1,813 frees, 209,912 bytes allocated
-==1578053== 
-==1578053== All heap blocks were freed -- no leaks are possible
-==1578053== 
-==1578053== For lists of detected and suppressed errors, rerun with: -s
-==1578053== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
-=======
-==1450298== 
-==1450298== HEAP SUMMARY:
-==1450298==     in use at exit: 0 bytes in 0 blocks
-==1450298==   total heap usage: 1,813 allocs, 1,813 frees, 209,912 bytes allocated
-==1450298== 
-==1450298== All heap blocks were freed -- no leaks are possible
-==1450298== 
-==1450298== For lists of detected and suppressed errors, rerun with: -s
-==1450298== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
->>>>>>> 6467200 (commit to pull)
+==3126105== 
+==3126105== HEAP SUMMARY:
+==3126105==     in use at exit: 0 bytes in 0 blocks
+==3126105==   total heap usage: 1,816 allocs, 1,816 frees, 210,040 bytes allocated
+==3126105== 
+==3126105== All heap blocks were freed -- no leaks are possible
+==3126105== 
+==3126105== For lists of detected and suppressed errors, rerun with: -s
+==3126105== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
