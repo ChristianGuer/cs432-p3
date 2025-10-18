@@ -1,3 +1,11 @@
+/*
+    Ai Statement: 
+        Used ai to make a function
+         that checks if a global var and function share a name.
+        To help make the check_location func
+        And making documentation for functions
+*/
+
 /**
  * @file p3-analysis.c
  * @brief Compiler phase 3: static analysis
@@ -89,11 +97,6 @@ Symbol *lookup_symbol_with_reporting(NodeVisitor *visitor, ASTNode *node, const 
  * @brief Macro for shorter retrieval of the inferred @c type attribute
  */
 #define GET_INFERRED_TYPE(N) (DecafType)(long) ASTNode_get_attribute(N, "type")
-
-void AnalysisVisitor_check_literal(NodeVisitor *visitor, ASTNode *node)
-{
-    NULL;
-}
 /**
  * @brief Infer the type of a literal node
  *
@@ -105,18 +108,48 @@ void AnalysisVisitor_infer_literal(NodeVisitor *visitor, ASTNode *node)
     SET_INFERRED_TYPE(node->literal.type);
 }
 
-void AnalysisVisitor_check_vardecl(NodeVisitor *visitor, ASTNode *node)
+/**
+ * @brief Infer the type attribute for a variable declaration.
+ *
+ * Validates illegal declarations (e.g., VOID variables, zero-length arrays, and
+ * local array declarations when only globals may be arrays). Emits errors to @ref ERROR_LIST.
+ *
+ * @param visitor Analysis visitor
+ * @param node    AST node of type @ref VARDECL
+ */
+
+void AnalysisVisitor_infer_vardecl(NodeVisitor *visitor, ASTNode *node)
 {
     if (node->vardecl.type == VOID)
     {
         ErrorList_printf(ERROR_LIST, "Void variable '%s' on line %d", node->vardecl.name, node->source_line);
     }
-    if (node->vardecl.array_length < 1)
+    if (node->vardecl.is_array && node->vardecl.array_length <= 0)
     {
         // array of length 0
         ErrorList_printf(ERROR_LIST, "Zero length array '%s' on line %d", node->vardecl.name, node->source_line);
     }
+
+    if (node->vardecl.is_array)
+    {
+        ASTNode *parent = (ASTNode*) ASTNode_get_attribute(node, "parent");
+
+        if(!parent || parent->type != PROGRAM)
+        {
+            ErrorList_printf(ERROR_LIST,
+                "Local Variable %s on line %d cannot be an array", node->vardecl.name, node->source_line);
+
+        }
+    }
+    
 }
+
+/**
+ * @brief Type-check and infer a LOCATION node (variable/array element).
+ *
+ * @param visitor Analysis visitor carrying state and errors
+ * @param node    AST node of type @ref LOCATION
+ */
 
 void AnalysisVisitor_check_location(NodeVisitor *visitor, ASTNode *node)
 {
@@ -134,12 +167,14 @@ void AnalysisVisitor_check_location(NodeVisitor *visitor, ASTNode *node)
     if (idx) {
         // Using an index: require array symbol and int index
         DecafType idx_t = GET_INFERRED_TYPE(idx);     // postvisit means child is typed
-        if (idx_t != INT) {
+        if (idx_t != INT) 
+        {
             ErrorList_printf(ERROR_LIST,
                 "Array index for '%s' must be int (found %s) on line %d",
                 sym->name, DecafType_to_string(idx_t), node->source_line);
         }
-        if (sym->symbol_type != ARRAY_SYMBOL) {
+        if (sym->symbol_type != ARRAY_SYMBOL) 
+        {
             ErrorList_printf(ERROR_LIST,
                 "Non-array symbol '%s' used with index on line %d",
                 sym->name, node->source_line);
@@ -150,7 +185,8 @@ void AnalysisVisitor_check_location(NodeVisitor *visitor, ASTNode *node)
         SET_INFERRED_TYPE(sym->type);
     } else {
         // No index: require scalar symbol
-        if (sym->symbol_type == ARRAY_SYMBOL) {
+        if (sym->symbol_type == ARRAY_SYMBOL) 
+        {
             ErrorList_printf(ERROR_LIST,
                 "Array '%s' used without an index on line %d",
                 sym->name, node->source_line);
@@ -162,13 +198,17 @@ void AnalysisVisitor_check_location(NodeVisitor *visitor, ASTNode *node)
 }
 
 
-// This requires a symbol lookup
-/* TODO: infer types of locations (this will require a symbol lookup) */
-void AnalysisVisitor_infer_binaryop(NodeVisitor *visitor, ASTNode *node)
-{
-    //lookup_symbol_with_reporting(visitor, node, node->location.name);
-}
 
+/**
+ * @brief Check operand types for a binary operator and set the result type.
+ *
+ * Enforces INT operands for arithmetic/relational ops, BOOL operands for logical
+ * ops, and matching operand types for equality ops. Reports errors to @ref ERROR_LIST
+ * and sets this node's inferred type to INT or BOOL depending on the operator.
+ *
+ * @param visitor Analysis visitor
+ * @param node    AST node of type @ref BINARYOP
+ */
 void AnalysisVisitor_check_binaryop(NodeVisitor *visitor, ASTNode *node)
 {
     DecafType left_type = GET_INFERRED_TYPE(node->binaryop.left);
@@ -183,6 +223,18 @@ void AnalysisVisitor_check_binaryop(NodeVisitor *visitor, ASTNode *node)
     case MULOP:
     case DIVOP:
     case MODOP:
+        if (left_type != INT || right_type != INT)
+        {
+            ErrorList_printf(ERROR_LIST,
+                             "Type error: binary operator %s requires integer operands "
+                             "(found %s and %s) on line %d",
+                             BinaryOpToString(node->binaryop.operator),
+                             DecafType_to_string(left_type),
+                             DecafType_to_string(right_type),
+                             node->source_line);
+        }
+        SET_INFERRED_TYPE(INT);
+        break;
     case LTOP:
     case LEOP:
     case GEOP:
@@ -197,7 +249,7 @@ void AnalysisVisitor_check_binaryop(NodeVisitor *visitor, ASTNode *node)
                              DecafType_to_string(right_type),
                              node->source_line);
         }
-        SET_INFERRED_TYPE(INT);
+        SET_INFERRED_TYPE(BOOL);
         break;
 
     /* logical operators */
@@ -235,6 +287,16 @@ void AnalysisVisitor_check_binaryop(NodeVisitor *visitor, ASTNode *node)
     }
 }
 
+/**
+ * @brief Verify existence of main
+ *  Anduse program symbol table to easily ceck for var/func clashes
+ *
+ * Ensures exactly one function named @c main exists (current message says "No main")
+ *
+ * @param visitor Analysis visitor
+ * @param node    AST node of type @ref PROGRAM
+ */
+
 void AnalysisVisitor_check_main(NodeVisitor *visitor, ASTNode *node)
 {
     // Check for existance of exactly one main function in code
@@ -263,8 +325,49 @@ void AnalysisVisitor_check_main(NodeVisitor *visitor, ASTNode *node)
     {
         ErrorList_printf(ERROR_LIST, "Compilation error: No main function found");
     }
+        SymbolTable *ptab = (SymbolTable*)ASTNode_get_attribute(node, "symbolTable");
+    if (!ptab || !ptab->local_symbols) return;
+
+    for (Symbol *s1 = ptab->local_symbols->head; s1; s1 = s1->next) 
+    {
+        if (s1->symbol_type != FUNCTION_SYMBOL) continue;
+
+        // ensure we report the clash only once per name
+        bool already_seen = false;
+        for (Symbol *prev = ptab->local_symbols->head; prev != s1; prev = prev->next) 
+        {
+            if (strcmp(prev->name, s1->name) == 0) 
+            { 
+                already_seen = true;
+                break;
+            }
+        }
+        if (already_seen) continue;
+
+        for (Symbol *s2 = s1->next; s2; s2 = s2->next) 
+        {
+            if (strcmp(s1->name, s2->name) == 0 && s2->symbol_type != FUNCTION_SYMBOL) 
+            {
+                ErrorList_printf(ERROR_LIST,
+                    "Global name '%s' is used for both a function and a variable/array",
+                    s1->name);
+                break;
+            }
+        }
+    }
 }
 
+/**
+ * @brief Helper to compute a DecafType for simple expression forms.
+ *
+ * Determines the type of @ref BINARYOP (based on operator category), @ref LITERAL
+ * (literal's own type), or @ref LOCATION (symbol's declared type). Returns @c UNKNOWN
+ * if the symbol lookup fails; callers should avoid cascading errors.
+ *
+ * @param visitor Analysis visitor
+ * @param node    Expression node (BINARYOP, LITERAL, or LOCATION)
+ * @return DecafType The best-known type for @p node, or @c UNKNOWN
+ */
 DecafType type_helper(NodeVisitor *visitor, ASTNode *node)
 {
     // return type of node from binary op, literal or location
@@ -315,15 +418,30 @@ DecafType type_helper(NodeVisitor *visitor, ASTNode *node)
     return assignmentDecaf;
 }
 
-void AnalysisVisitor_infer_block(NodeVisitor *visitor, ASTNode *node) {
+/**
+ * @brief Validate duplicate variable declarations within a block scope.
+ *
+ * Performs an O(n^2) scan of the block's local symbol list to detect duplicates.
+ * Reports "Duplicate variable '<name>'" once per duplicate group.
+ *
+ * @param visitor Analysis visitor
+ * @param node    AST node of type @ref BLOCK with an attached symbol table
+ */
+void AnalysisVisitor_infer_block(NodeVisitor *visitor, ASTNode *node) 
+{
     // node is BLOCK here
+
     SymbolTable *table = (SymbolTable*)ASTNode_get_attribute(node, "symbolTable");
     if (!table || !table->local_symbols) return;
 
     // O(n^2) duplicate check is fine for project scale
-    for (Symbol *s1 = table->local_symbols->head; s1; s1 = s1->next) {
-        for (Symbol *s2 = s1->next; s2; s2 = s2->next) {
-            if (strcmp(s1->name, s2->name) == 0) {
+    for (Symbol *s1 = table->local_symbols->head; s1; s1 = s1->next) 
+    {
+        for (Symbol *s2 = s1->next; s2; s2 = s2->next) 
+        {
+            //printf(node->);
+            if (strcmp(s1->name, s2->name) == 0) 
+            {
                 ErrorList_printf(ERROR_LIST, "Duplicate variable '%s' on line %d",
                                  s2->name, node->source_line);
                 break; // report once per duplicate group
@@ -332,81 +450,17 @@ void AnalysisVisitor_infer_block(NodeVisitor *visitor, ASTNode *node) {
     }
 }
 
-void AnalysisVisitor_check_break_continue(NodeVisitor *visitor, ASTNode *node)
-{
 
-    ASTNode *parent = (ASTNode *)ASTNode_get_attribute(node, "parent");
-
-    printf("WHY");
-    fflush(stdout);
-    if (ASTNode_has_attribute(node, "symbolTable"))
-    {
-        SymbolTable *table = (SymbolTable *)ASTNode_get_attribute(node, "symbolTable");
-        if (table != NULL)
-        {
-            Symbol *sym1 = table->local_symbols->head;
-            while (sym1 != NULL)
-            {
-                Symbol *sym2 = sym1->next;
-                while (sym2 != NULL)
-                {
-                    if (strcmp(sym1->name, sym2->name) == 0)
-                    {
-                        ErrorList_printf(ERROR_LIST,
-                                         "Duplicate variable '%s'",
-                                         sym1->name);
-                        break; // Only report once per duplicate pair
-                    }
-                    sym2 = sym2->next;
-                }
-                sym1 = sym1->next;
-            }
-        }
-    }
-
-    if (parent == NULL)
-    {
-        return;
-    }
-    if (parent->type == WHILELOOP)
-    {
-        return;
-    }
-
-    // Check for break and continue statements outside of loops
-    NodeList *stmts = node->block.statements;
-    ASTNode *current_node = stmts->head;
-    while (current_node != NULL)
-    {        printf("WHY2");
-    fflush(stdout);
-        if (current_node->type == BREAKSTMT || current_node->type == CONTINUESTMT)
-        {
-            ErrorList_printf(ERROR_LIST, "Compilation error: Breakout keyword outside of loop on line %d", current_node->source_line);
-        }
-        if (current_node->type == RETURNSTMT)
-        {
-            ASTNode *retNode = current_node->funcreturn.value;
-            DecafType retType = type_helper(visitor, retNode);
-            if (retType == UNKNOWN)
-            {
-                return; // Error message already handled
-            }
-            while (parent->type != FUNCDECL)
-            {
-                // get parent recursivly until you find the function dec
-                parent = (ASTNode *)ASTNode_get_attribute(parent, "parent");
-            }
-            DecafType funcDeclType = parent->funcdecl.return_type;
-            if (retType != funcDeclType)
-            {
-                ErrorList_printf(ERROR_LIST, "Type Error: Return type '%s' does not match that of it's function '%s' at line %d",
-                                 DecafType_to_string(retType), DecafType_to_string(funcDeclType), node->source_line);
-            }
-        }
-        current_node = current_node->next;
-    }
-
-}
+/**
+ * @brief Enforce that a conditional's condition is boolean-typed.
+ *
+ * Accepts BOOL-typed expressions and relational/logical/equality binary ops.
+ * Reports an error if the condition is an arithmetic-int expression or a
+ * non-BOOL literal/location. Uses @ref lookup_symbol_with_reporting for locations.
+ *
+ * @param visitor Analysis visitor
+ * @param node    AST node of type @ref CONDITIONAL
+ */
 
 void AnalysisVisitor_check_conditional(NodeVisitor *visitor, ASTNode *node)
 {
@@ -462,7 +516,16 @@ void AnalysisVisitor_check_conditional(NodeVisitor *visitor, ASTNode *node)
         }
     }
 }
-
+/**
+ * @brief Pre-assign the LHS variable type to the assignment node's inferred type.
+ *
+ * Looks up the LHS location's symbol and sets the assignment expression's printed
+ * type attribute to that symbol's type. Also rejects VOID/UNKNOWN LHS types.
+ * (Actual LHS/RHS compatibility is enforced in @ref AnalysisVisitor_check_assignment.)
+ *
+ * @param visitor Analysis visitor
+ * @param node    AST node of type @ref ASSIGNMENT
+ */
 void AnalysisVisitor_infer_assignment(NodeVisitor *visitor, ASTNode *node)
 {
     Symbol *sym = lookup_symbol_with_reporting(visitor, node, node->assignment.location->location.name);
@@ -477,18 +540,21 @@ void AnalysisVisitor_infer_assignment(NodeVisitor *visitor, ASTNode *node)
 
     }
     SET_INFERRED_TYPE(symType);
-    /*DecafType assignmentDecaf = type_helper(visitor, node->assignment.value);
-    if (assignmentDecaf != symType)
-    {
-        ErrorList_printf(ERROR_LIST, "Type error: Location type '%s' does not match assigned type '%s' on line %d", DecafType_to_string(symType), DecafType_to_string(assignmentDecaf), node->source_line);
-        return;
-    }*/
+
 }
 
-/*
-    Actually analyze the outputted value and assert they are the same types. Not for arrays
-    TODO: infer and check array assignment when symbol->symbol_type == ARRAY_SYMBOL
-*/
+
+/**
+ * @brief Check assignment type compatibility (non-array paths).
+ *
+ * Compares inferred types of LHS location and RHS expression. Rejects VOID on
+ * either side and mismatched types. Skips checks if either side is @c UNKNOWN to
+ * prevent cascading diagnostics.
+ *
+ * @param visitor Analysis visitor
+ * @param node    AST node of type @ref ASSIGNMENT
+ */
+
 void AnalysisVisitor_check_assignment(NodeVisitor *visitor, ASTNode *node)
 {
     ASTNode  *lhs = node->assignment.location;
@@ -500,14 +566,16 @@ void AnalysisVisitor_check_assignment(NodeVisitor *visitor, ASTNode *node)
     // Don’t pile on errors if a child already failed to type
     if (lt == UNKNOWN || rt == UNKNOWN) return;
 
-    if (lt == VOID || rt == VOID) {
+    if (lt == VOID || rt == VOID) 
+    {
         ErrorList_printf(ERROR_LIST,
             "Assignment Type Error: 'void' is not a valid value or variable type (line %d)",
             node->source_line);
         return;
     }
 
-    if (lt != rt) {
+    if (lt != rt) 
+    {
         ErrorList_printf(ERROR_LIST,
             "Assignment Type Error: assigned type %s does not match variable type %s (line %d)",
             DecafType_to_string(rt), DecafType_to_string(lt), node->source_line);
@@ -515,6 +583,15 @@ void AnalysisVisitor_check_assignment(NodeVisitor *visitor, ASTNode *node)
 }
 
 
+/**
+ * @brief Infer the type of a function call expression.
+ *
+ * Validates that the callee identifier exists and is a function symbol, then
+ * assigns the call node's inferred type to the function's return type.
+ *
+ * @param visitor Analysis visitor
+ * @param node    AST node of type @ref FUNCCALL
+ */
 void AnalysisVisitor_infer_funccall(NodeVisitor *visitor, ASTNode *node)
 {
     //Check that function is defined 
@@ -522,7 +599,8 @@ void AnalysisVisitor_infer_funccall(NodeVisitor *visitor, ASTNode *node)
      Symbol *sym = lookup_symbol_with_reporting(visitor, node, node->funccall.name);
     if (!sym) return;
 
-    if (sym->symbol_type != FUNCTION_SYMBOL) {
+    if (sym->symbol_type != FUNCTION_SYMBOL) 
+    {
         ErrorList_printf(ERROR_LIST,
             "Identifier '%s' is not a function (line %d)",
             node->funccall.name, node->source_line);
@@ -534,18 +612,27 @@ void AnalysisVisitor_infer_funccall(NodeVisitor *visitor, ASTNode *node)
     SET_INFERRED_TYPE(ret);
 }
 
+/**
+ * @brief Check arity and argument types for a function call.
+ *
+ * Ensures the callee is a function, the argument count matches the parameter
+ * count, and each argument's inferred type equals the corresponding parameter type.
+ * Reports descriptive mismatches including argument position.
+ *
+ * @param visitor Analysis visitor
+ * @param node    AST node of type @ref FUNCCALL
+ */
+
 void AnalysisVisitor_check_funccall(NodeVisitor *visitor, ASTNode *node)
 {
-
-
     Symbol *symbol = lookup_symbol_with_reporting(visitor, node, node->funccall.name);
     //i dont htink i need to check if symbol is null bc the function already does that
     //get symbol func return type
     if (!symbol) return;
 
-
-    if (symbol->symbol_type != FUNCTION_SYMBOL) {
-        // Already reported above, but keep it robust if previsit wasn't run
+    if (symbol->symbol_type != FUNCTION_SYMBOL)
+    {
+        // Already reported above, but keep if previsit aint't run
         ErrorList_printf(ERROR_LIST,
             "Identifier '%s' is not a function (line %d)",
             node->funccall.name, node->source_line);
@@ -566,13 +653,15 @@ void AnalysisVisitor_check_funccall(NodeVisitor *visitor, ASTNode *node)
     ASTNode *argument = node->funccall.arguments ? node->funccall.arguments->head : NULL;
     Parameter *requiredParam = symbol->parameters ? symbol->parameters->head : NULL;
 
-    for (int i = 0; argument && requiredParam; ++i, argument = argument->next, requiredParam = requiredParam->next) {
+    for (int i = 0; argument && requiredParam; ++i, argument = argument->next, requiredParam = requiredParam->next) 
+    {
         DecafType arg_ty = GET_INFERRED_TYPE(argument);  // set by literal/location/binaryop visitors
         DecafType par_ty = requiredParam->type;               // required type from signature
 
 
 
-        if (arg_ty != par_ty) {
+        if (arg_ty != par_ty) 
+        {
             ErrorList_printf(ERROR_LIST,
                 "Type Mismatch in parameter %d of call to '%s': expected %s but found %s on (line %d)",
                 i, symbol->name,
@@ -582,22 +671,29 @@ void AnalysisVisitor_check_funccall(NodeVisitor *visitor, ASTNode *node)
                 return;
         }
     }
-
-
 }
-void AnalysisVisitor_infer_return(NodeVisitor *visitor, ASTNode *node)
-{
 
-}
+/**
+ * @brief Validate that a return statement matches the current function's return type.
+ *
+ * Uses @ref DATA->current_return_type, set in @ref AnalysisVisitor_infer_funcdecl, to
+ * check value presence and type. Reports missing values for non-void functions,
+ * disallows values in void functions, and flags type mismatches. Skips further
+ * checks if the expression's type is @c UNKNOWN.
+ *
+ * @param visitor Analysis visitor
+ * @param node    AST node of type @ref RETURNSTMT
+ */
+
 void AnalysisVisitor_check_return(NodeVisitor *visitor, ASTNode *node)
 {
-
     DecafType expected = DATA->current_return_type;
-
     ASTNode *expr = node->funcreturn.value;
 
-    if (expr == NULL) {
-        if (expected != VOID) {
+    if (expr == NULL) 
+    {
+        if (expected != VOID) 
+        {
             ErrorList_printf(ERROR_LIST,
                 "Missing return value (expected %s) on line %d",
                 DecafType_to_string(expected), node->source_line);
@@ -606,7 +702,8 @@ void AnalysisVisitor_check_return(NodeVisitor *visitor, ASTNode *node)
     }
 
 
-    if (expected == VOID) {
+    if (expected == VOID) 
+    {
         ErrorList_printf(ERROR_LIST,
             "Return with a value in a void function on line %d", node->source_line);
         return;
@@ -614,12 +711,11 @@ void AnalysisVisitor_check_return(NodeVisitor *visitor, ASTNode *node)
     }
     DecafType actual = GET_INFERRED_TYPE(expr);    
     if(actual == UNKNOWN){
-        /*ErrorList_printf(ERROR_LIST,
-            "Cannot verify return type due to earlier type error (line %d)",
-            node->source_line);*/
+        //only return bc msg is taken care of already
         return;
     }
-    if (actual != expected) {
+    if (actual != expected) 
+    {
         ErrorList_printf(ERROR_LIST,
             "Return type mismatch: expected %s, found %s (line %d)",
             DecafType_to_string(expected), DecafType_to_string(actual),
@@ -629,42 +725,95 @@ void AnalysisVisitor_check_return(NodeVisitor *visitor, ASTNode *node)
 }
 
 
+/**
+ * @brief Enter a function declaration and set the expected return type.
+ *
+ * Stores the function's declared return type in @ref DATA->current_return_type so
+ * later @ref RETURNSTMT checks can validate against it.
+ *
+ * @param visitor Analysis visitor
+ * @param node    AST node of type @ref FUNCDECL
+ */
+
 void AnalysisVisitor_infer_funcdecl(NodeVisitor *visitor, ASTNode *node)
 {
     //DATA->current_return_type = node->funcdecl.return_type;
-
     DATA->current_return_type = node->funcdecl.return_type;
-
     //printf("%s", DecafType_to_string(node->funcdecl.return_type));
 }
 
-static void AnalysisVisitor_enter_while(NodeVisitor *visitor, ASTNode *node) {
+
+static void AnalysisVisitor_enter_while(NodeVisitor *visitor, ASTNode *node) 
+{
     DATA->loopdepth++;
 }
-static void AnalysisVisitor_exit_while(NodeVisitor *visitor, ASTNode *node) {
+static void AnalysisVisitor_exit_while(NodeVisitor *visitor, ASTNode *node) 
+{
+    ASTNode *cond = node->whileloop.condition;
+
+    // Always decrement even if early return
+    DecafType t = UNKNOWN;
+    if (!cond) 
+    {
+        ErrorList_printf(ERROR_LIST,
+            "While loop missing condition (line %d)", node->source_line);
+    } 
+    else 
+    {
+        t = GET_INFERRED_TYPE(cond);  // already set by child visitors
+        if (t != UNKNOWN && t != BOOL) 
+        {
+            ErrorList_printf(ERROR_LIST,
+                "Type mismatch: bool expected but found %s on line %d",
+                DecafType_to_string(t), node->source_line);
+        }
+        // If t == UNKNOWN, skip to avoid cascading (came from earlier error)
+    }
     DATA->loopdepth--;
-    // (optional) also check the while condition is BOOL here
 }
 
-static void AnalysisVisitor_check_break(NodeVisitor *visitor, ASTNode *node) {
-    if (DATA->loopdepth == 0) {
+/**
+ * @brief Validate that a @c break statement occurs within a loop.
+ *
+ * Emits an error if encountered with @ref DATA->loopdepth == 0.
+ *
+ * @param visitor Analysis visitor
+ * @param node    AST node of type @ref BREAKSTMT
+ */
+
+static void AnalysisVisitor_check_break(NodeVisitor *visitor, ASTNode *node)
+{
+    if (DATA->loopdepth == 0) 
+    {
         ErrorList_printf(ERROR_LIST, "'break' not within a loop (line %d)", node->source_line);
     }
 }
-static void AnalysisVisitor_check_continue(NodeVisitor *visitor, ASTNode *node) {
-    if (DATA->loopdepth == 0) {
+
+/**
+ * @brief Validate that a @c continue statement occurs within a loop.
+ *
+ * Emits an error if encountered with @ref DATA->loopdepth == 0.
+ *
+ * @param visitor Analysis visitor
+ * @param node    AST node of type @ref CONTINUESTMT
+ */
+
+static void AnalysisVisitor_check_continue(NodeVisitor *visitor, ASTNode *node) 
+{
+    if (DATA->loopdepth == 0) 
+    {
         ErrorList_printf(ERROR_LIST, "'continue' not within a loop (line %d)", node->source_line);
     }
 }
 
+//TODO check for infiintie loop maybe
+/*
+*/
 
 ErrorList *analyze(ASTNode *tree)
 {
     /* allocate analysis structures */
 
-    /*NodeVisitor *pv = PrintVisitor_new(stdout);
-    NodeVisitor_traverse(pv, tree);
-    NodeVisitor_free(pv);*/
     if(tree == NULL)
     {
         ErrorList *errors = ErrorList_new();
@@ -679,15 +828,15 @@ ErrorList *analyze(ASTNode *tree)
     /* BOILERPLATE: TODO: register analysis callbacks */
     v->previsit_program = NULL;
     v->postvisit_program = AnalysisVisitor_check_main;
-    v->previsit_vardecl = NULL;
-    v->postvisit_vardecl = AnalysisVisitor_check_vardecl;
+    v->previsit_vardecl = AnalysisVisitor_infer_vardecl;
+    v->postvisit_vardecl = NULL;
     v->previsit_funcdecl = AnalysisVisitor_infer_funcdecl;
     v->postvisit_funcdecl = NULL;
     v->previsit_block = AnalysisVisitor_infer_block;
     v->postvisit_block = NULL;
     v->previsit_assignment = NULL;
     v->postvisit_assignment = AnalysisVisitor_check_assignment;
-    v->previsit_conditional = AnalysisVisitor_check_conditional;
+    v->previsit_conditional = AnalysisVisitor_check_conditional; //
     v->postvisit_conditional = NULL;
     v->previsit_whileloop = AnalysisVisitor_enter_while;
     v->postvisit_whileloop = AnalysisVisitor_exit_while;
